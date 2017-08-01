@@ -249,7 +249,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
                                     //如果y轴滑动距离超过设置的处理范围，那么进行滑动事件处理
                                     if (mDownX < mScreenWidth * 0.5f) {//左侧改变亮度
                                         mChangeBrightness = true;
-                                        WindowManager.LayoutParams lp = JCUtils.getAppCompActivity(getContext()).getWindow().getAttributes();
+                                        WindowManager.LayoutParams lp = JCUtils.scanForActivity(getContext()).getWindow().getAttributes();
                                         if (lp.screenBrightness < 0) {
                                             try {
                                                 mGestureDownBrightness = Settings.System.getInt(getContext().getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
@@ -292,7 +292,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
                     if (mChangeBrightness) {
                         deltaY = -deltaY;
                         int deltaV = (int) (255 * deltaY * 3 / mScreenHeight);
-                        WindowManager.LayoutParams params = JCUtils.getAppCompActivity(getContext()).getWindow().getAttributes();
+                        WindowManager.LayoutParams params = JCUtils.scanForActivity(getContext()).getWindow().getAttributes();
                         if (((mGestureDownBrightness + deltaV) / 255) >= 1) {//这和声音有区别，必须自己过滤一下负值
                             params.screenBrightness = 1;
                         } else if (((mGestureDownBrightness + deltaV) / 255) <= 0) {
@@ -300,7 +300,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
                         } else {
                             params.screenBrightness = (mGestureDownBrightness + deltaV) / 255;
                         }
-                        JCUtils.getAppCompActivity(getContext()).getWindow().setAttributes(params);
+                        JCUtils.scanForActivity(getContext()).getWindow().setAttributes(params);
                         //dialog中显示百分比
                         int brightnessPercent = (int) (mGestureDownBrightness * 100 / 255 + deltaY * 3 * 100 / mScreenHeight);
                         showBrightnessDialog(brightnessPercent);
@@ -523,7 +523,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
         mAudioManager.abandonAudioFocus(onAudioFocusChangeListener);
         JCUtils.scanForActivity(getContext()).getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         clearFullscreenLayout();
-        JCUtils.getAppCompActivity(getContext()).setRequestedOrientation(NORMAL_ORIENTATION);
+        JCUtils.scanForActivity(getContext()).setRequestedOrientation(NORMAL_ORIENTATION);
 
         JCMediaManager.textureView = null;
         JCMediaManager.savedSurfaceTexture = null;
@@ -590,7 +590,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
     }
 
     public void clearFloatScreen() {
-        JCUtils.getAppCompActivity(getContext()).setRequestedOrientation(NORMAL_ORIENTATION);
+        JCUtils.scanForActivity(getContext()).setRequestedOrientation(NORMAL_ORIENTATION);
         showSupportActionBar(getContext());
         JCVideoPlayer currJcvd = JCVideoPlayerManager.getCurrentJcvd();
         currJcvd.textureViewContainer.removeView(JCMediaManager.textureView);
@@ -725,7 +725,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
     public void startWindowFullscreen() {
         Log.i(TAG, "startWindowFullscreen " + " [" + this.hashCode() + "] ");
         hideSupportActionBar(getContext());
-        JCUtils.getAppCompActivity(getContext()).setRequestedOrientation(FULLSCREEN_ORIENTATION);
+        JCUtils.scanForActivity(getContext()).setRequestedOrientation(FULLSCREEN_ORIENTATION);
 
         ViewGroup vp = (ViewGroup) (JCUtils.scanForActivity(getContext()))//.getWindow().getDecorView();
                 .findViewById(Window.ID_ANDROID_CONTENT);
@@ -786,7 +786,7 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
 
     public static void startFullscreen(Context context, Class _class, String url, Object... objects) {
         hideSupportActionBar(context);
-        JCUtils.getAppCompActivity(context).setRequestedOrientation(FULLSCREEN_ORIENTATION);
+        JCUtils.scanForActivity(context).setRequestedOrientation(FULLSCREEN_ORIENTATION);
         ViewGroup vp = (ViewGroup) (JCUtils.scanForActivity(context))//.getWindow().getDecorView();
                 .findViewById(Window.ID_ANDROID_CONTENT);
         View old = vp.findViewById(JCVideoPlayer.FULLSCREEN_ID);
@@ -864,27 +864,44 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
 
     public static void showSupportActionBar(Context context) {
         if (ACTION_BAR_EXIST) {
-            ActionBar ab = JCUtils.getAppCompActivity(context).getSupportActionBar();
-            if (ab != null) {
-                ab.setShowHideAnimationEnabled(false);
-                ab.show();
+            Activity activity = JCUtils.scanForActivity(context);
+            if (activity instanceof AppCompatActivity) {
+                ActionBar ab = JCUtils.getAppCompActivity(context).getSupportActionBar();
+                if (ab != null) {
+                    ab.setShowHideAnimationEnabled(false);
+                    ab.show();
+                }
+            } else if (activity != null) {
+                android.app.ActionBar ab = activity.getActionBar();
+                if (ab != null) {
+                    ab.show();
+                }
             }
         }
         if (TOOL_BAR_EXIST) {
-            JCUtils.getAppCompActivity(context).getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            JCUtils.scanForActivity(context).getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
     }
 
     public static void hideSupportActionBar(Context context) {
         if (ACTION_BAR_EXIST) {
-            ActionBar ab = JCUtils.getAppCompActivity(context).getSupportActionBar();
-            if (ab != null) {
-                ab.setShowHideAnimationEnabled(false);
-                ab.hide();
+            Activity activity = JCUtils.scanForActivity(context);
+            if (activity instanceof AppCompatActivity) {
+                ActionBar ab = ((AppCompatActivity) activity).getSupportActionBar();
+                if (ab != null) {
+                    ab.setShowHideAnimationEnabled(false);
+                    ab.hide();
+                }
+            } else if (activity != null) {
+                android.app.ActionBar ab = activity.getActionBar();
+                if (ab != null) {
+                    ab.hide();
+                }
             }
+
         }
         if (TOOL_BAR_EXIST) {
-            JCUtils.getAppCompActivity(context).getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            JCUtils.scanForActivity(context).getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
     }
@@ -898,10 +915,10 @@ public abstract class JCVideoPlayer extends FrameLayout implements View.OnClickL
                 && currentScreen != SCREEN_WINDOW_FULLSCREEN
                 && currentScreen != SCREEN_WINDOW_TINY) {
             if (x > 0) {
-                JCUtils.getAppCompActivity(getContext()).setRequestedOrientation(
+                JCUtils.scanForActivity(getContext()).setRequestedOrientation(
                         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             } else {
-                JCUtils.getAppCompActivity(getContext()).setRequestedOrientation(
+                JCUtils.scanForActivity(getContext()).setRequestedOrientation(
                         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
             }
             onEvent(JCUserAction.ON_ENTER_FULLSCREEN);
